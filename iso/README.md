@@ -1,4 +1,4 @@
 # iso
-raw extracted files from compressed iso images
+raw extracted files from compressed .iso images
 
-recompress into iso after download and follow your typical iso flashing procedure
+recompress into .iso after download and follow your typical iso flashing procedure
