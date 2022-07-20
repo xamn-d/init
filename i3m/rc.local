@@ -1,0 +1,8 @@
+#!/bin/bash
+modprobe i2c-smbus
+modprobe i2c-i801
+modprobe i2c-dev
+sleep 1
+sudo /usr/local/sbin/airtop-fpsvc
+[ "$(lspci -nn | grep VGA | grep NVIDIA)" ] && sudo /usr/local/sbin/gpu-thermald
+exit 0
