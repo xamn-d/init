@@ -4,6 +4,6 @@ tools and software for system initialization
 
 i3m - sensor panel display core utils
 
-iso - raw system images
+iso - uncompressed raw system images
 
 packages - what it sounds like
