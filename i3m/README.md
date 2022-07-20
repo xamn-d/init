@@ -8,4 +8,4 @@ To activate, type `sudo /etc/rc.local`, then exit the terminal window.
 
 
 
-Persistence and aliasing available at user discretion and system dependent.
+Persistence and aliasing available at user discretion and dependent on system architecture.
