@@ -1,0 +1,1 @@
+"Boot GalliumOS normally" "ro root=UUID=f34bce59-2bad-4d40-bcf2-86d734cfedd7 quiet splash acpi_osi=""Linux"""

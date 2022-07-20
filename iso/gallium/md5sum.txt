@@ -1,0 +1,6 @@
+94234b55ea87fb9e72b848196e502588  ./casper/filesystem.squashfs
+c6521468e9318e4e4f21cf5312d58cc7  ./casper/filesystem.size
+af1e3cce4a06c61a1209907a1a80681d  ./casper/filesystem.manifest-desktop
+b3b7403a986e9adc11024befb355c991  ./casper/initrd.img
+9491f3c6bb0859e7c123fcc2e920041a  ./casper/vmlinuz
+5c8abee95c4e4c16ebb96be99a4350b8  ./casper/filesystem.manifest

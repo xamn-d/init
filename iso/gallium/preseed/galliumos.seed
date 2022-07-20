@@ -1,0 +1,17 @@
+## galliumos.seed
+
+## set hostname as sanity check
+d-i netcfg/get_hostname string galliumos
+
+## set local pkg pool FIXME: d-i command, right?
+#d-i oem-config/repository string /cdrom
+#ubiquity oem-config/repository string /cdrom
+## or /cdrom/pool ??
+#d-i debian-installer/allow_unauthenticated boolean true
+
+## set success_command
+ubiquity ubiquity/success_command string /bin/sh /cdrom/preseed/galliumos.post
+
+## FIXME: this might be redundant
+d-i oem-config/install-language-support boolean false
+d-i pkgsel/install-language-support boolean false

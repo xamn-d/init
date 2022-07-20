@@ -1,0 +1,131 @@
+#!/bin/sh
+#
+
+#FORCE_REFIND="y"
+TBEE="/target/boot/efi/EFI"
+
+echo "galliumos.post: begin"
+
+## if we are NOT booted under UEFI, then exit with success
+if [ ! -d /sys/firmware/efi ]; then
+  echo "galliumos.post: not an EFI install, nothing to do. exiting"
+  exit 0
+fi
+
+EFI_DIRS_REQ_REFIND="Microsoft SomeotherOS"
+EFI_BOOTLOADER="grub"
+
+for os_dir in $EFI_DIRS_REQ_REFIND; do
+  # if we see an OS that GRUB doesn't boot well, use rEFInd...
+  if [ -d "$TBEE/$os_dir" ]; then
+    echo "galliumos.post: found /EFI/$os_dir, will try to use rEFInd"
+    EFI_BOOTLOADER="refind"
+  fi
+done
+
+TARGET_IS_LVM=$(mount | awk '$3 == "/target" { print $1 }' | grep /dev/mapper)
+if [ -n "$TARGET_IS_LVM" ]; then
+  # but rEFInd can't boot LVM, so use GRUB...
+  echo "galliumos.post: /target is LVM, incompatible with rEFInd, will use GRUB"
+  EFI_BOOTLOADER="grub"
+fi
+
+if [ -n "$FORCE_REFIND" ]; then
+  # unless rEFInd is forced.
+  echo "galliumos.post: using rEFInd, forced by configuration"
+  EFI_BOOTLOADER="refind"
+fi
+
+if [ "$EFI_BOOTLOADER" = "grub" ]; then
+  echo "galliumos.post: using GRUB, fixing some bits"
+  # - Ubiquity uses /usr/lib/fwupdate/install (pkg fwupdate) to install
+  #   some image bits (that we might not need), into EFI/ubuntu
+  # - /usr/lib/fwupdate/install uses EFI/ubuntu, which we do not want
+  # - We should fix fwupdate to target EFI/galliumos, but for now...
+  # - copy EFI/ubuntu contents (fw/ and fwupx64.efi) into EFI/galliumos
+  #cp -r $TBEE/ubuntu/{fw,fwupx64.efi} $TBEE/galliumos
+
+  # - If there is nothing else in the EFI/ubuntu dir, it was created
+  #   by the current installer, will not work, and should be removed
+  #rm -rf $TBEE/ubuntu
+
+  # - Ubiquity uses grub-install to install /EFI/galliumos/grubx64.efi,
+  #   cp'ed from /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed
+  #   (pkg: grub-efi-amd64-signed, on cdrom APT repo)
+  # - grubx64.efi hardcodes "EFI/ubuntu"; we need "EFI/galliumos", so
+  #   we fix it with sed
+  # - this works, but the "signed" tag suggests possible issues
+  #sed -i "s/EFI\/ubuntu\x00\x00\x00/EFI\/galliumos/" \
+  sed -i "s/EFI\/ubuntu\x00\x00\x00\x00/EFI\/galliumos\x00/" \
+    $TBEE/galliumos/grubx64.efi
+
+  ## current firmware requires EFI/BOOT/BOOTX64.efi, so cp there
+  mkdir -p $TBEE/BOOT
+  cp $TBEE/galliumos/grubx64.efi $TBEE/BOOT/BOOTX64.efi
+
+  echo "galliumos.post: finished fixing GRUB bits, exiting"
+  exit 0
+fi
+
+echo "galliumos.post: installing rEFInd /EFI/BOOT"
+if [ -d $TBEE/BOOT ]; then
+  echo "galliumos.post: preserving old /EFI/BOOT as /EFI/BOOT.backup"
+  rm -rf $TBEE/BOOT.backup
+  mv $TBEE/BOOT $TBEE/BOOT.backup
+fi
+
+cp -r /cdrom/preseed/refind/BOOT $TBEE/
+
+## TODO: don't rm the TBEE/galliumos tree, and don't create refind_linux
+## for multi-OS with GRUB installed
+
+echo "galliumos.post: removing ubiquity /EFI dirs"
+rm -rf $TBEE/grub
+rm -rf $TBEE/ubuntu
+rm -rf $TBEE/galliumos
+
+echo "galliumos.post: determining device paths"
+part_dev=$(mount | awk '$3 == "/target" { print $1 }')
+part_num=$(echo $part_dev | awk '{ print substr($0, length, 1) }')
+
+case "$part_dev" in
+  /dev/sd*)
+    disk_dev=$(echo $part_dev | awk '{ print substr($0, 0, length-1) }') ;;
+  /dev/mmcblk*)
+    disk_dev=$(echo $part_dev | awk '{ print substr($0, 0, length-2) }') ;;
+  /dev/mapper/*)
+    disk_dev= ; part_num= ;;
+  *) echo "galliumos.post: fatal: unrecognized device: \"$part_dev\""; exit 1 ;;
+esac
+echo "galliumos.post: /target is $part_dev: disk $disk_dev, pnum $part_num"
+
+if [ -n "$disk_dev" ]; then
+  echo "galliumos.post: labelling GalliumOS partition"
+  printf "c\n${part_num}\nGalliumOS\nw\ny\nq\n" | gdisk "$disk_dev"
+else
+  echo "galliumos.post: skipping labelling GalliumOS partition (LVM?)"
+fi
+## copy in icon in case labelling is impossible
+cp /cdrom/preseed/refind/BOOT/icons/os_galliumos.png /target/boot/.VolumeIcon.png
+
+echo "galliumos.post: creating refind_linux.conf"
+eval $(blkid ${part_dev} | cut -d\  -f2-)
+echo "galliumos.post: $part_dev uuid is \"$UUID\""
+
+grub_lline=$(grep "^\s\s*linux" /target/boot/grub/grub.cfg | head -1)
+grub_args=
+
+for token in $grub_lline; do
+  case "$token" in
+    linux|/*|root=*|ro|\$vt_handoff) ;;
+    *) grub_args="$grub_args $token" ;;
+  esac
+done
+echo "galliumos.post: grub_args \"$grub_args\""
+
+## FIXME: gaos_debug
+cat >/target/boot/refind_linux.conf <<EOF
+"Boot GalliumOS normally" "ro root=UUID=${UUID} ${grub_args} gaos_debug=post"
+EOF
+
+echo "galliumos.post: finished"
