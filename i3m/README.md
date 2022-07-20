@@ -4,7 +4,7 @@ Copy `rc.local` into your `/etc/` directory.
 
 
 
-To activate, type `sudo /etc/rc.local`, then exit the terminal window.
+To activate, type `sudo chmod +x /etc/rc.local`, press [ENTER], then `sudo /etc/rc.local`, [ENTER], then exit the terminal window.
 
 
 
