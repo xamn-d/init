@@ -10,6 +10,7 @@ sudo apt autoclean -y && sudo apt autoremove -y
 ##
 
 #desired
-##
+sudo apt install steam
+sudo apt install git
 
 sudo reboot
